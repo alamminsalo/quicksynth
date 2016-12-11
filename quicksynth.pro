@@ -4,16 +4,25 @@ CONFIG += c++11
 
 DEFINES += __MACOSX_CORE__
 
-SOURCES += src/main.cpp 
+SOURCES += src/main.cpp \ 
+    src/synthengine.cpp \
+    src/synth.cpp \
+    src/waveform.cpp
 
-HEADERS += src/synth.h 
+HEADERS += src/synth.h \ 
+    src/synthengine.h \
+    src/utils.h \
+    src/global.h \
+    src/waveform.h
 
 RESOURCES += qml.qrc
 
-INCLUDEPATH += /usr/local/include
-LIBS += -L/usr/local/Cellar/stk/4.5.0/lib -lstk \
-        -framework CoreAudio \
-        -framework CoreFoundation
+macx: {
+	INCLUDEPATH += /usr/local/include
+	LIBS += -L/usr/local/Cellar/stk/4.5.0/lib -lstk \
+		-framework CoreAudio \
+		-framework CoreFoundation
+}
 
 # Additional import path used to resolve QML modules in Qt Creator's code model
 QML_IMPORT_PATH =
