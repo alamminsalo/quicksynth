@@ -17,7 +17,7 @@ SynthEngine::SynthEngine(QObject *parent) : QObject(parent)
 
     try
     {
-        m_dac = new RtWvOut(1);
+        m_dac = new RtWvOut(1, Stk::sampleRate(), 0, globalvar::buffer_size);
     }
     catch (StkError &e)
     {
@@ -27,21 +27,28 @@ SynthEngine::SynthEngine(QObject *parent) : QObject(parent)
 
 SynthEngine::~SynthEngine()
 {
-    m_dac->stop();
-    delete m_dac;
+    m_running = false;
 
     qDeleteAll(m_synths);
+
+    m_dac->stop();
+    delete m_dac;
 }
 
 void SynthEngine::tick()
 {
     double value = 0.0;
-    foreach (Synth *s, m_synths)
+
+    if (synthCount() > 0 && m_playing)
     {
-        value += s->tick();
+        foreach (Synth *s, m_synths)
+        {
+            value += s->tick();
+        }
+        value /= synthCount();
     }
 
-    m_dac->tick(value / synthCount());
+    m_dac->tick(value);
 }
 
 Synth *SynthEngine::getSynth(uint index)
@@ -56,4 +63,95 @@ Synth *SynthEngine::getSynth(uint index)
 uint SynthEngine::synthCount() const
 {
     return m_synths.size();
+}
+
+void SynthEngine::addSynth(Synth *s)
+{
+    if (s)
+        m_synths << s;
+}
+
+void SynthEngine::setInterface(SynthInterface *interf)
+{
+    if (interf)
+    {
+        connect(interf, SIGNAL(noteOn(float)), this, SLOT(noteOn(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(noteOff()), this, SLOT(noteOff()), Qt::DirectConnection);
+        connect(interf, SIGNAL(pitch(float)), this, SLOT(setPitch(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(squareAmount(float)), this, SLOT(setSquareAmount(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(detuneAmount(float)), this, SLOT(setDetuneAmount(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(unisonCount(unsigned int)), this, SLOT(setUnisonCount(unsigned int)), Qt::DirectConnection);
+    }
+}
+
+#include <QThread>
+void SynthEngine::run()
+{
+    qDebug() << "STARTED synthengine";
+    qDebug() << "Thread: " << QThread::currentThreadId();
+    while(m_running)
+    {
+        tick();
+    }
+    qDebug() << "Stopped synthengine";
+}
+
+void SynthEngine::noteOn(float key)
+{
+    setKey(key);
+
+    foreach (Synth *s, m_synths)
+    {
+        s->reset();
+    }
+
+    m_playing = true;
+}
+
+void SynthEngine::noteOff()
+{
+    m_playing = false;
+}
+
+void SynthEngine::setKey(float key)
+{
+    foreach (Synth *s, m_synths)
+    {
+        s->setKey(key);
+    }
+}
+
+void SynthEngine::setPitch(float pitch)
+{
+    foreach (Synth *s, m_synths)
+    {
+        s->setPitch(pitch);
+    }
+}
+
+void SynthEngine::setSquareAmount(float amount)
+{
+    qDebug() << "Set sqr: " << amount;
+    foreach (Synth *s, m_synths)
+    {
+        s->setSquareAmount(amount);
+    }
+}
+
+void SynthEngine::setDetuneAmount(float amount)
+{
+    qDebug() << "Set detune: " << amount;
+    foreach (Synth *s, m_synths)
+    {
+        s->setUnisonAmount(amount);
+    }
+}
+
+void SynthEngine::setUnisonCount(unsigned int amount)
+{
+    qDebug() << "Set unison: " << amount;
+    foreach (Synth *s, m_synths)
+    {
+        s->setUnisonCount(amount);
+    }
 }

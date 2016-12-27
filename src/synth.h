@@ -16,8 +16,10 @@ using namespace stk;
 /*
  * Synth oscillator class
  */
-class Synth
+class Synth: public QObject
 {
+    Q_OBJECT
+
     QList<SineWave *> waves;
     QList<StkFloat> unisonFreqs;
 
@@ -37,7 +39,7 @@ class Synth
     StkFloat volume;
 public:
 
-    Synth();
+    explicit Synth(QObject *parent = 0);
     ~Synth();
 
     void setKey(const StkFloat &key);
@@ -48,6 +50,7 @@ public:
     void setUnisonCount(const unsigned int &count);
 
     void clear();
+    void reset();
 
     StkFloat tick();
 };

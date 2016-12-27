@@ -3,6 +3,9 @@
 
 #include "./global.h"
 #include <vector>
+#include <QString>
+#include <qmath.h>
+#include <QDebug>
 
 namespace utils
 {
@@ -10,7 +13,7 @@ namespace utils
 /*
  * Returns wanted seconds fitted with samplerate
  */
-long seconds(int count)
+inline long seconds(int count)
 {
     return globalvar::samplerate * count;
 }
@@ -18,12 +21,54 @@ long seconds(int count)
 /*
  * Returns frequency from given interval compared to A4 (440.0 hz)
  */
-double itof(float interval)
+inline double itof(float interval)
 {
     return globalvar::tuning * pow(globalvar::root_step, interval);
 }
 
-double pitchShift(double f, float interval)
+/*
+ * Converts note to freq
+ * Must be format 'c4#', # is optional
+ */
+inline double stof(QString note)
+{
+    float interval = 0.0;
+
+    /* Evaluate note */
+    switch (note.at(0).toLatin1())
+    {
+    case 'g':
+        interval += 2.0;
+    case 'f':
+        interval += 1.0;
+    case 'e':
+        interval += 2.0;
+    case 'd':
+        interval += 2.0;
+    case 'c':
+        interval += 1.0;
+    case 'b':
+        interval += 2.0;
+    case 'a':
+    default:
+        //Do nothing
+        break;
+    }
+
+    /* Evaluate octave */
+    int oct = note.mid(1, 1).toInt();
+    interval += oct * 12 - (4 * 12); //Remember A4 is the root position
+
+    /* Check for upper mark */
+    if (note.contains('#'))
+        interval += 1.0f;
+
+    qDebug() << "Translated " << note << " to " << interval;
+
+    return interval;
+}
+
+inline double pitchShift(double f, float interval)
 {
     return f * pow(globalvar::root_step, interval);
 }
@@ -31,7 +76,7 @@ double pitchShift(double f, float interval)
 /*
  * Returns polarized 1 based on input value
  */
-double square(double val)
+inline double square(double val)
 {
     return val > 0 ? double(1) : double(-1);
 }
@@ -39,7 +84,7 @@ double square(double val)
 /*
  * Distorts given value by given ceiling
  */
-double distort(double val, double ceil)
+inline double distort(double val, double ceil)
 {
     //Invert ceil
     ceil = (ceil < 0 ? 0 : 1 - ceil);
@@ -49,7 +94,7 @@ double distort(double val, double ceil)
 /*
  * Scales given value with the volume scale given
  */
-double scaleVolume(double val, double scale)
+inline double scaleVolume(double val, double scale)
 {
     return scale * val;
 }
@@ -57,7 +102,7 @@ double scaleVolume(double val, double scale)
 /*
  * Returns detuned vector of floats
  */
-std::vector<double> unisonDetune(double freq, double amt, unsigned int count)
+inline std::vector<double> unisonDetune(double freq, double amt, unsigned int count)
 {
     std::vector<double> freqs;
 
@@ -72,12 +117,12 @@ std::vector<double> unisonDetune(double freq, double amt, unsigned int count)
         double interval = amt * 2.0 / (count - 1);
         double startFreq = freq - amt;
 
-        for (int i=0; i < count; i++)
+        for (unsigned int i=0; i < count; i++)
         {
             double detuned_freq = (startFreq + i * interval) - freq;
             freqs.push_back(detuned_freq);
 
-            std::cout << "Detuned freq i=" << i << ": " << detuned_freq << std::endl;
+            qDebug() << "Detuned freq i=" << i << ": " << detuned_freq;
         }
     }
 

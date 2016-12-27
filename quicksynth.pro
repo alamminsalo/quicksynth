@@ -2,26 +2,32 @@ QT += qml quick multimedia
 
 CONFIG += c++11
 
-DEFINES += __MACOSX_CORE__
-
 SOURCES += src/main.cpp \ 
     src/synthengine.cpp \
     src/synth.cpp \
-    src/waveform.cpp
+    src/waveform.cpp \
+    src/synthinterface.cpp
 
 HEADERS += src/synth.h \ 
     src/synthengine.h \
     src/utils.h \
     src/global.h \
-    src/waveform.h
+    src/waveform.h \
+    src/synthinterface.h
 
 RESOURCES += qml.qrc
 
-macx: {
+macx:{
+        DEFINES += __MACOSX_CORE__
 	INCLUDEPATH += /usr/local/include
 	LIBS += -L/usr/local/Cellar/stk/4.5.0/lib -lstk \
 		-framework CoreAudio \
 		-framework CoreFoundation
+}
+
+unix: !macx: {
+    DEFINES += __UNIX_JACK__
+    LIBS += -lstk
 }
 
 # Additional import path used to resolve QML modules in Qt Creator's code model

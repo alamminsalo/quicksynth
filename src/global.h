@@ -1,13 +1,13 @@
 #ifndef GLOBAL_H
 #define GLOBAL_H
 
-/// \todo change these for mutable static variables
+/// immutable static variables
 
 namespace globalvar {
-    const float samplerate = 44100.0f;
-    const float tuning = 440.0f;
-    const double root_step = 1.059463094;
-    unsigned int samplesize = 16;
+    static const float samplerate = 48000;
+    static const float tuning = 440.0;
+    static const double root_step = 1.059463094;
+    static const unsigned int buffer_size = 32;
 }
 
 #endif // GLOBAL_H

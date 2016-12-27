@@ -1,11 +1,13 @@
 #include "synth.h"
 
-Synth::Synth()
+Synth::Synth(QObject *parent)
+    : QObject(parent)
 {
-    key = utils::itof(0);
+    key = utils::itof(3);
     pitch = 0.0;
     unisonAmount = 0.0;
     squareAmount = 0.0;
+    volume = 1.0;
 }
 
 Synth::~Synth()
@@ -15,7 +17,7 @@ Synth::~Synth()
 
 void Synth::setKey(const StkFloat &key)
 {
-    this->key = key;
+    this->key = utils::itof(key);
 }
 
 void Synth::setPitch(const StkFloat &pitch)
@@ -57,6 +59,7 @@ void Synth::setUnisonCount(const unsigned int &count)
     if (count > 0)
     {
         setUnisonAmount(unisonAmount);
+        setVolume(1.0f / count);
     }
 }
 
@@ -64,6 +67,14 @@ void Synth::clear()
 {
     qDeleteAll(waves);
     waves.clear();
+}
+
+void Synth::reset()
+{
+    foreach (SineWave *wv, waves)
+    {
+        wv->reset();
+    }
 }
 
 StkFloat Synth::tick()
