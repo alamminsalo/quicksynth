@@ -7,7 +7,7 @@ ApplicationWindow {
     visible: true
     width: 640
     height: 480
-    title: qsTr("Hello World")
+    title: qsTr("QuickSynth")
 
     function randomNote()
     {
@@ -17,47 +17,106 @@ ApplicationWindow {
         return (notes[Math.round(Math.random() * (notes.length - 1))] + Math.round(Math.random() * 2.0 + 3.0))
     }
 
-    GridLayout {
-        anchors.fill: parent
+    Item {
 
-        Button {
-            text: "Play"
+        id: controlsArea
 
-            onPressedChanged: {
+        anchors {
+            top: parent.top
+            bottom: pianoRoll.top
+            left: parent.left
+            right: parent.right
+        }
 
-                if (pressed) {
-                    Synth.setNoteOn(randomNote())
-                }
-                else
-                    Synth.noteOff()
+        GridLayout {
 
+            LabelDial {
+                id: squareDial
+                label: "Square"
+                onPositionChanged: Synth.squareAmount(position)
+            }
+
+            LabelDial {
+                id: detuneDial
+                label: "Unison detune"
+                from: 0
+                to: 10
+                on_ValueChanged: Synth.detuneAmount(_value)
+            }
+
+            LabelDial {
+                id: unisonDial
+                label: "Unison count"
+                from: 1
+                to: 8
+                snapMode: Dial.SnapAlways
+                stepSize: 1
+                on_ValueChanged: Synth.unisonCount(_value)
             }
         }
+    }
 
-        LabelDial {
-            id: squareDial
-            label: "Square"
-            onPositionChanged: Synth.squareAmount(position)
+
+    RowLayout {
+        id: pianoControls
+        anchors {
+            bottom: pianoRoll.top
+            left: parent.left
+            right: parent.right
         }
 
-        LabelDial {
-            id: detuneDial
-            label: "Detune"
-            from: 0
-            to: 50
-            stepSize: 1
-            snapMode: Dial.SnapAlways
-            on_ValueChanged: Synth.detuneAmount(_value)
+        SpinBox {
+            id: octaveSelector
+            Layout.alignment: Qt.AlignLeft | Qt.AlignVCenter
+            from: -3
+            to: 3
+            value: 0
+        }
+    }
+
+    Item {
+        id: pianoRoll
+
+        signal keyOn(int key)
+        signal keyOff(int key)
+
+        onKeyOn: {
+            Synth.noteOn(key + octaveSelector.value * 12)
         }
 
-        LabelDial {
-            id: unisonDial
-            label: "Voices"
-            from: 1
-            to: 8
-            snapMode: Dial.SnapAlways
-            stepSize: 1
-            on_ValueChanged: Synth.unisonCount(_value)
+        onKeyOff: {
+            Synth.noteOff()
+        }
+
+        anchors {
+            bottom: parent.bottom
+            left: parent.left
+            right: parent.right
+        }
+        height: width * 0.2
+
+        PianoRoll {
+            id: piano0
+            anchors {
+                top: parent.top
+                bottom: parent.bottom
+                left: parent.left
+                right: parent.horizontalCenter
+            }
+            onKeyOn: pianoRoll.keyOn(key)
+            onKeyOff: pianoRoll.keyOff(key)
+        }
+
+        PianoRoll {
+            id: piano2
+            anchors {
+                top: parent.top
+                bottom: parent.bottom
+                left: parent.horizontalCenter
+                right: parent.right
+            }
+            onKeyOn: pianoRoll.keyOn(key + 12)
+            onKeyOff: pianoRoll.keyOff(key + 12)
         }
     }
 }

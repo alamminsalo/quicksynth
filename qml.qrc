@@ -2,5 +2,7 @@
     <qresource prefix="/">
         <file>main.qml</file>
         <file>LabelDial.qml</file>
+        <file>PianoRoll.qml</file>
+        <file>PianoKey.qml</file>
     </qresource>
 </RCC>
