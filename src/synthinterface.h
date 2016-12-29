@@ -19,12 +19,18 @@ public slots:
     void setNoteOn(QString note);
 
 signals:
-    void noteOn(float key);
-    void noteOff();
+    void noteOn(int key);
+    void noteOff(int key);
     void pitch(float pitch);
     void squareAmount(float amount);
     void detuneAmount(float amount);
     void unisonCount(unsigned int count);
+
+    // ADSR
+    void attack(float attack);
+    void decay(float decay);
+    void sustain(float sustain);
+    void release(float release);
 };
 
 #endif // SYNTHINTERFACE_H

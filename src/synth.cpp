@@ -1,23 +1,41 @@
 #include "synth.h"
 
+void Synth::setPlaying(bool value)
+{
+    playing = value;
+}
+
 Synth::Synth(QObject *parent)
     : QObject(parent)
 {
-    key = utils::itof(3);
+    frequency = utils::itof(3);
     pitch = 0.0;
     unisonAmount = 0.0;
     squareAmount = 0.0;
     volume = 1.0;
+    playing = false;
 }
 
 Synth::~Synth()
 {
+    clear();
 
+    if (unisonFreqs)
+        delete []unisonFreqs;
 }
 
-void Synth::setKey(const StkFloat &key)
+void Synth::setKey(const int &key)
 {
-    this->key = utils::itof(key);
+    this->key = key;
+    this->frequency = utils::itof(this->key);
+    this->playing = true;
+
+    adsr.keyOn();
+}
+
+void Synth::setKeyOff()
+{
+    adsr.keyOff();
 }
 
 void Synth::setPitch(const StkFloat &pitch)
@@ -28,12 +46,16 @@ void Synth::setPitch(const StkFloat &pitch)
 void Synth::setUnisonAmount(const StkFloat &unisonAmount)
 {
     this->unisonAmount = unisonAmount;
-    unisonFreqs.clear();
 
-    foreach (double d, utils::unisonDetune(key, unisonAmount, waves.size()))
-    {
-        unisonFreqs << d;
-    }
+    unsigned int count = waves.size();
+
+    //Recreate unisonFreqs table
+    if (unisonFreqs)
+        delete []unisonFreqs;
+
+    unisonFreqs = new double[count];
+
+    utils::unisonDetune(frequency, unisonAmount, count, unisonFreqs);
 }
 
 void Synth::setSquareAmount(const StkFloat &squareAmount)
@@ -48,10 +70,15 @@ void Synth::setVolume(const StkFloat &value)
 
 void Synth::setUnisonCount(const unsigned int &count)
 {
-    clear();
-    unisonFreqs.clear();
+    waves.reserve(count);
 
-    for (unsigned int i=0; i < count; i++)
+    while (count < waves.size())
+    {
+        delete waves.back();
+        waves.pop_back();
+    }
+
+    while (count > waves.size())
     {
         waves.push_back(new SineWave());
     }
@@ -65,7 +92,9 @@ void Synth::setUnisonCount(const unsigned int &count)
 
 void Synth::clear()
 {
-    qDeleteAll(waves);
+    foreach (const stk::SineWave *s, waves)
+        delete s;
+
     waves.clear();
 }
 
@@ -77,12 +106,17 @@ void Synth::reset()
     }
 }
 
+void Synth::setADSREnvelope(const StkFloat &atk, const StkFloat &decay, const StkFloat &sustain, const StkFloat &release)
+{
+    adsr.setAllTimes(atk, decay, sustain, release);
+}
+
 StkFloat Synth::tick()
 {
     StkFloat val = 0;
     for (int i=0; i < waves.size(); i++)
     {
-        waves[i]->setFrequency(key + unisonFreqs[i] + pitch);
+        waves[i]->setFrequency(frequency + unisonFreqs[i] + pitch);
 
         StkFloat tick = waves[i]->tick();
         if (squareAmount > 0.0)
@@ -101,5 +135,20 @@ StkFloat Synth::tick()
         val += tick;
     }
 
-    return utils::scaleVolume(val, volume);
+    StkFloat adsr_value = adsr.tick();
+
+    if (playing && adsr.getState() == ADSR::IDLE)
+        playing = false;
+
+    return val * volume * adsr_value;
+}
+
+int Synth::getKey() const
+{
+    return key;
+}
+
+bool Synth::isPlaying() const
+{
+    return playing;
 }

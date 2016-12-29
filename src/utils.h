@@ -2,10 +2,10 @@
 #define UTILS_H
 
 #include "./global.h"
-#include <vector>
 #include <QString>
 #include <qmath.h>
 #include <QDebug>
+#include <QList>
 
 namespace utils
 {
@@ -102,13 +102,11 @@ inline double scaleVolume(double val, double scale)
 /*
  * Returns detuned vector of floats
  */
-inline std::vector<double> unisonDetune(double freq, double amt, unsigned int count)
+inline int unisonDetune(double freq, double amt, unsigned int count, double freqs[])
 {
-    std::vector<double> freqs;
-
     if (count == 1)
     {
-        freqs.push_back(0);
+        freqs[0] = 0.0;
     }
 
     else if (count > 1)
@@ -119,14 +117,13 @@ inline std::vector<double> unisonDetune(double freq, double amt, unsigned int co
 
         for (unsigned int i=0; i < count; i++)
         {
-            double detuned_freq = (startFreq + i * interval) - freq;
-            freqs.push_back(detuned_freq);
+            freqs[i] = (startFreq + i * interval) - freq;
 
-            qDebug() << "Detuned freq i=" << i << ": " << detuned_freq;
+            //qDebug() << "Detuned freq i=" << i << ": " << detuned_freq;
         }
     }
 
-    return freqs;
+    return 1;
 }
 
 ///*

@@ -7,9 +7,18 @@ Rectangle {
     property int key
     property bool black: false
 
+    property alias pressed: mArea.pressed
+
+    onPressedChanged: {
+        if (pressed)
+            root.parent.keyOn(root.key)
+        else
+            root.parent.keyOff(root.key)
+    }
+
     border {
         width: 2
-        color: mArea.pressed ? "#aaa" : "#111"
+        color: pressed ? "#aaa" : "#111"
     }
 
     color: root.black ? "black" : "white"
@@ -27,11 +36,5 @@ Rectangle {
         id: mArea
         anchors.fill: parent
         propagateComposedEvents: false
-        onPressedChanged: {
-            if (pressed)
-                root.parent.keyOn(root.key)
-            else
-                root.parent.keyOff(root.key)
-        }
     }
 }

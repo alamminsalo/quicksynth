@@ -12,11 +12,6 @@ int main(int argc, char *argv[])
 
     /// \brief Setup synth engine
     SynthEngine *synthengine = SynthEngine::getInstance();
-    Synth *s = new Synth(synthengine);
-    {
-        s->setUnisonCount(5);
-    }
-    synthengine->addSynth(s);
 
     /// \brief Setup interface
     SynthInterface *interf = SynthInterface::getInstance();

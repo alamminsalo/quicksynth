@@ -35,18 +35,48 @@ SynthEngine::~SynthEngine()
     delete m_dac;
 }
 
+void SynthEngine::setInterface(SynthInterface *interf)
+{
+    if (interf)
+    {
+        connect(interf, SIGNAL(noteOn(int)), this, SLOT(noteOn(int)), Qt::DirectConnection);
+        connect(interf, SIGNAL(noteOff(int)), this, SLOT(noteOff(int)), Qt::DirectConnection);
+        connect(interf, SIGNAL(pitch(float)), this, SLOT(setPitch(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(squareAmount(float)), this, SLOT(setSquareAmount(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(detuneAmount(float)), this, SLOT(setDetuneAmount(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(unisonCount(unsigned int)), this, SLOT(setUnisonCount(unsigned int)), Qt::DirectConnection);
+        connect(interf, SIGNAL(attack(float)), this, SLOT(setAttack(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(decay(float)), this, SLOT(setDecay(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(sustain(float)), this, SLOT(setSustain(float)), Qt::DirectConnection);
+        connect(interf, SIGNAL(release(float)), this, SLOT(setRelease(float)), Qt::DirectConnection);
+    }
+}
+
 void SynthEngine::tick()
 {
     double value = 0.0;
 
-    if (synthCount() > 0 && m_playing)
+    if (synthCount() > 0)
     {
-        foreach (Synth *s, m_synths)
+        for (unsigned int i=0; i < m_synths.length(); i++)
         {
-            value += s->tick();
+            Synth *s = m_synths.at(i);
+
+            if (s->isPlaying())
+                value += s->tick();
+            else
+            {
+                delete m_synths.takeAt(i--);
+            }
         }
-        value /= synthCount();
     }
+
+    //Clamp at +- 1.0 boundaries
+    if (value > 1.0f)
+        value = 1.0f;
+
+    else if (value < -1.0f)
+        value = -1.0f;
 
     m_dac->tick(value);
 }
@@ -67,28 +97,20 @@ uint SynthEngine::synthCount() const
 
 void SynthEngine::addSynth(Synth *s)
 {
-    if (s)
+    if (s) {
+        s->setSquareAmount(m_squareAmount);
+        s->setUnisonAmount(m_unisonDetune);
+        s->setUnisonCount(m_unisonCount);
+        s->setADSREnvelope(m_attack, m_decay, m_sustain, m_release);
         m_synths << s;
-}
 
-void SynthEngine::setInterface(SynthInterface *interf)
-{
-    if (interf)
-    {
-        connect(interf, SIGNAL(noteOn(float)), this, SLOT(noteOn(float)), Qt::DirectConnection);
-        connect(interf, SIGNAL(noteOff()), this, SLOT(noteOff()), Qt::DirectConnection);
-        connect(interf, SIGNAL(pitch(float)), this, SLOT(setPitch(float)), Qt::DirectConnection);
-        connect(interf, SIGNAL(squareAmount(float)), this, SLOT(setSquareAmount(float)), Qt::DirectConnection);
-        connect(interf, SIGNAL(detuneAmount(float)), this, SLOT(setDetuneAmount(float)), Qt::DirectConnection);
-        connect(interf, SIGNAL(unisonCount(unsigned int)), this, SLOT(setUnisonCount(unsigned int)), Qt::DirectConnection);
+        s->setVolume(1.0f / synthCount());
     }
 }
 
-#include <QThread>
 void SynthEngine::run()
 {
     qDebug() << "STARTED synthengine";
-    qDebug() << "Thread: " << QThread::currentThreadId();
     while(m_running)
     {
         tick();
@@ -96,62 +118,156 @@ void SynthEngine::run()
     qDebug() << "Stopped synthengine";
 }
 
-void SynthEngine::noteOn(float key)
+void SynthEngine::noteOn(int key)
 {
-    setKey(key);
+    //Remove possibly playing key
+    killNote(key);
 
-    foreach (Synth *s, m_synths)
+    //Setup new sound for that key
+    Synth *s = new Synth();
+    s->setKey(key);
+    addSynth(s);
+}
+
+void SynthEngine::noteOff(int key)
+{
+    for (unsigned int i=0; i < m_synths.length(); i++)
     {
-        s->reset();
+        Synth *s = m_synths.at(i);
+
+        if (s->getKey() == key)
+            s->setKeyOff();
     }
-
-    m_playing = true;
 }
 
-void SynthEngine::noteOff()
+void SynthEngine::killNote(int key)
 {
-    m_playing = false;
-}
-
-void SynthEngine::setKey(float key)
-{
-    foreach (Synth *s, m_synths)
+    for (unsigned int i=0; i < m_synths.length(); i++)
     {
-        s->setKey(key);
+        Synth *s = m_synths.at(i);
+
+        if (s->getKey() == key)
+            s->setPlaying(false);
     }
 }
 
 void SynthEngine::setPitch(float pitch)
 {
+    m_pitch = pitch;
     foreach (Synth *s, m_synths)
     {
-        s->setPitch(pitch);
+        s->setPitch(m_pitch);
     }
 }
 
 void SynthEngine::setSquareAmount(float amount)
 {
     qDebug() << "Set sqr: " << amount;
+    m_squareAmount = amount;
     foreach (Synth *s, m_synths)
     {
-        s->setSquareAmount(amount);
+        s->setSquareAmount(m_squareAmount);
     }
 }
 
 void SynthEngine::setDetuneAmount(float amount)
 {
     qDebug() << "Set detune: " << amount;
-    foreach (Synth *s, m_synths)
+    m_unisonDetune = amount;
+
+    if (m_detuneMutex.tryLock(10))
     {
-        s->setUnisonAmount(amount);
+        foreach (Synth *s, m_synths)
+        {
+            s->setUnisonAmount(m_unisonDetune);
+        }
+
+        m_detuneMutex.unlock();
     }
 }
 
 void SynthEngine::setUnisonCount(unsigned int amount)
 {
     qDebug() << "Set unison: " << amount;
-    foreach (Synth *s, m_synths)
+    m_unisonCount = amount;
+
+    if (m_unisonCountMutex.tryLock(10))
     {
-        s->setUnisonCount(amount);
+        foreach (Synth *s, m_synths)
+        {
+            s->setUnisonCount(m_unisonCount);
+        }
+
+        m_unisonCountMutex.unlock();
+    }
+}
+
+float SynthEngine::getRelease() const
+{
+    return m_release;
+}
+
+void SynthEngine::setRelease(float release)
+{
+    m_release = release;
+
+    if (m_release <= 0.0f)
+        m_release = 0.01f;
+
+    updateADSR();
+}
+
+float SynthEngine::getSustain() const
+{
+    return m_sustain;
+}
+
+void SynthEngine::setSustain(float sustain)
+{
+    m_sustain = sustain;
+
+    if (m_sustain <= 0.0f)
+        m_sustain = 0.01f;
+
+
+    updateADSR();
+}
+
+float SynthEngine::getDecay() const
+{
+    return m_decay;
+}
+
+void SynthEngine::setDecay(float decay)
+{
+    if (m_decay <= 0.0f)
+        m_decay = 0.01f;
+
+    m_decay = decay;
+    updateADSR();
+}
+
+float SynthEngine::getAttack() const
+{
+    return m_attack;
+}
+
+void SynthEngine::setAttack(float attack)
+{
+    m_attack = attack;
+
+    qDebug() << attack;
+
+    if (m_attack <= 0.0f)
+        m_attack = 0.01f;
+
+    updateADSR();
+}
+
+void SynthEngine::updateADSR()
+{
+    foreach(Synth *s, m_synths)
+    {
+        s->setADSREnvelope(m_attack, m_decay, m_sustain, m_release);
     }
 }

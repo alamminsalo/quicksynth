@@ -30,28 +30,89 @@ ApplicationWindow {
 
         GridLayout {
 
+            anchors.fill: parent
+
             LabelDial {
                 id: squareDial
                 label: "Square"
+                valueAsInteger: false
                 onPositionChanged: Synth.squareAmount(position)
             }
 
-            LabelDial {
-                id: detuneDial
-                label: "Unison detune"
-                from: 0
-                to: 10
-                on_ValueChanged: Synth.detuneAmount(_value)
+            GroupBox {
+
+                title: "Unison"
+
+                RowLayout {
+
+                    LabelDial {
+                        id: detuneDial
+                        label: "Unison detune"
+                        from: 0
+                        to: 10
+                        valueAsInteger: false
+                        on_ValueChanged: Synth.detuneAmount(_value)
+                    }
+
+                    LabelDial {
+                        id: unisonDial
+                        label: "Unison count"
+                        from: 1
+                        to: 8
+                        snapMode: Dial.SnapAlways
+                        stepSize: 1
+                        on_ValueChanged: Synth.unisonCount(_value)
+                    }
+                }
             }
 
-            LabelDial {
-                id: unisonDial
-                label: "Unison count"
-                from: 1
-                to: 8
-                snapMode: Dial.SnapAlways
-                stepSize: 1
-                on_ValueChanged: Synth.unisonCount(_value)
+
+            GroupBox {
+
+                title: "ADSR"
+
+                RowLayout {
+
+                    LabelDial {
+                        id: atkDial
+                        label: "Attack"
+                        from: 0.01
+                        to: 10.0
+                        valueAsInteger: false
+                        stepSize: 0
+                        onPositionChanged: Synth.attack(position * to)
+                    }
+
+                    LabelDial {
+                        id: decDial
+                        label: "Decay"
+                        from: 0.01
+                        to: 10.0
+                        valueAsInteger: false
+                        stepSize: 0
+                        onPositionChanged: Synth.decay(position * to)
+                    }
+
+                    LabelDial {
+                        id: susDial
+                        label: "Sustain"
+                        from: 0.0
+                        to: 1.0
+                        valueAsInteger: false
+                        stepSize: 0
+                        onPositionChanged: Synth.sustain(position * to)
+                    }
+
+                    LabelDial {
+                        id: relDial
+                        label: "Release"
+                        from: 0.01
+                        to: 10.0
+                        valueAsInteger: false
+                        stepSize: 0
+                        onPositionChanged: Synth.release(position * to)
+                    }
+                }
             }
         }
     }
@@ -80,12 +141,17 @@ ApplicationWindow {
         signal keyOn(int key)
         signal keyOff(int key)
 
+        function applyOctave(key)
+        {
+            return key + octaveSelector.value * 12
+        }
+
         onKeyOn: {
-            Synth.noteOn(key + octaveSelector.value * 12)
+            Synth.noteOn(applyOctave(key))
         }
 
         onKeyOff: {
-            Synth.noteOff()
+            Synth.noteOff(applyOctave(key))
         }
 
         anchors {
